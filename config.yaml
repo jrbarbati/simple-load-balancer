@@ -6,6 +6,7 @@ apps:
     instances:
       - url: http://localhost:8080
       - url: http://localhost:8081
+    strategy: least_connections
   - host: http://app2-host.com
     health_uri: /api/v2/health
     timeout: 5s

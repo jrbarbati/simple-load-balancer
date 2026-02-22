@@ -15,6 +15,7 @@ type ApplicationConfig struct {
 	HealthUri           string            `yaml:"health_uri"`
 	Timeout             string            `yaml:"timeout"`
 	HealthCheckCooldown string            `yaml:"health_check_cooldown"`
+	Strategy            string            `yaml:"strategy"`
 }
 
 type InstanceConfig struct {

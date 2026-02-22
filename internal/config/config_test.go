@@ -25,6 +25,7 @@ func TestLoadConfig(t *testing.T) {
 					"/health",
 					"10s",
 					"60s",
+					"least_connections",
 				},
 				{
 					"http://app2-host.com",
@@ -35,6 +36,7 @@ func TestLoadConfig(t *testing.T) {
 					"/api/v2/health",
 					"5s",
 					"45s",
+					"",
 				},
 			},
 		}},
@@ -69,6 +71,7 @@ apps:
     instances:
       - url: http://localhost:8080
       - url: http://localhost:8081
+    strategy: least_connections
   - host: http://app2-host.com
     health_uri: /api/v2/health
     timeout: 5s

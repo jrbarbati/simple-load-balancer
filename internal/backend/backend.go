@@ -11,11 +11,12 @@ import (
 )
 
 type Backend struct {
-	Url        *url.URL
-	healthUri  string
-	healthy    *atomic.Bool
-	httpClient *http.Client
-	mutex      sync.Mutex
+	Url               *url.URL
+	healthUri         string
+	healthy           *atomic.Bool
+	httpClient        *http.Client
+	mutex             sync.Mutex
+	activeConnections *atomic.Int32
 }
 
 var UrlParseError = errors.New("invalid url")
@@ -48,12 +49,14 @@ func NewFromString(rawUrl string, healthUri string, httpClient *http.Client) (*B
 func NewFromUrl(url *url.URL, healthUri string, httpClient *http.Client) (*Backend, error) {
 	healthy := &atomic.Bool{}
 	healthy.Store(true)
+	activeConnections := &atomic.Int32{}
+	activeConnections.Store(0)
 
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
 
-	return &Backend{url, healthUri, healthy, httpClient, sync.Mutex{}}, nil
+	return &Backend{url, healthUri, healthy, httpClient, sync.Mutex{}, activeConnections}, nil
 }
 
 func (be *Backend) StartHealthCheck(ctx context.Context, cooldown time.Duration) {
@@ -96,4 +99,16 @@ func (be *Backend) IsHealthy() bool {
 
 func (be *Backend) SetHealth(healthy bool) {
 	be.healthy.Store(healthy)
+}
+
+func (be *Backend) ActiveConnections() int32 {
+	return be.activeConnections.Load()
+}
+
+func (be *Backend) AddConnection() {
+	be.activeConnections.Add(1)
+}
+
+func (be *Backend) ReleaseConnection() {
+	be.activeConnections.Add(-1)
 }

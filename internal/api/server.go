@@ -101,7 +101,7 @@ func buildLoadBalancers(pathToConfig string) (map[string]*balancer.LoadBalancer,
 			return nil, err
 		}
 
-		lbs[app.Host] = balancer.New(backends, healthCheckCooldown)
+		lbs[app.Host] = balancer.New(backends, determineStrategy(app.Strategy), healthCheckCooldown)
 	}
 
 	return lbs, nil
@@ -122,4 +122,15 @@ func buildBackends(app *config.ApplicationConfig, httpClient *http.Client) ([]*b
 	}
 
 	return backends, nil
+}
+
+func determineStrategy(strategy string) balancer.Strategy {
+	switch strategy {
+	case balancer.RoundRobinStrategy:
+		return balancer.NewRoundRobin()
+	case balancer.LeastConnectionsStrategy:
+		return balancer.NewLeastConnections()
+	default:
+		return balancer.NewRoundRobin()
+	}
 }

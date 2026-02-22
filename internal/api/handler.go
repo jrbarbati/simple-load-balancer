@@ -48,6 +48,9 @@ func (server *Server) handleProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	be.AddConnection()
+	defer be.ReleaseConnection()
+
 	httputil.NewSingleHostReverseProxy(be.Url).ServeHTTP(w, r)
 }
 

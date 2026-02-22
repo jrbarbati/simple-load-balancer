@@ -8,21 +8,29 @@ import (
 	"time"
 )
 
+const (
+	RoundRobinStrategy       = "round_robin"
+	LeastConnectionsStrategy = "least_connections"
+)
+
 var NoRegisteredBackends = errors.New("no registered backends")
 var NoHealthyBackends = errors.New("no healthy backends available")
 
+type Strategy interface {
+	NextBackend([]*backend.Backend) (*backend.Backend, error)
+}
+
 type LoadBalancer struct {
 	backends            []*backend.Backend
-	routeToIndex        *atomic.Uint64
-	backendsCount       uint64
+	strategy            Strategy
 	healthCheckCooldown time.Duration
 }
 
-func New(backends []*backend.Backend, healthCheckCooldown time.Duration) *LoadBalancer {
+func New(backends []*backend.Backend, strategy Strategy, healthCheckCooldown time.Duration) *LoadBalancer {
 	routeToIndex := &atomic.Uint64{}
 	routeToIndex.Store(0)
 
-	return &LoadBalancer{backends, routeToIndex, uint64(len(backends)), healthCheckCooldown}
+	return &LoadBalancer{backends, strategy, healthCheckCooldown}
 }
 
 func (lb *LoadBalancer) StartHealthChecks(ctx context.Context) {
@@ -32,33 +40,7 @@ func (lb *LoadBalancer) StartHealthChecks(ctx context.Context) {
 }
 
 func (lb *LoadBalancer) GetNextBackend() (*backend.Backend, error) {
-	if len(lb.backends) <= 0 {
-		return nil, NoRegisteredBackends
-	}
-
-	counter := lb.getRouteToIndex()
-	maxCount := counter + uint64(len(lb.backends))
-
-	for counter < maxCount {
-		routeToIndex := counter % lb.backendsCount
-
-		if lb.backends[routeToIndex].IsHealthy() {
-			lb.setRouteToIndex(routeToIndex + 1)
-			return lb.backends[routeToIndex], nil
-		}
-
-		counter++
-	}
-
-	return nil, NoHealthyBackends
-}
-
-func (lb *LoadBalancer) getRouteToIndex() uint64 {
-	return lb.routeToIndex.Load()
-}
-
-func (lb *LoadBalancer) setRouteToIndex(routeToIndex uint64) {
-	lb.routeToIndex.Store(routeToIndex)
+	return lb.strategy.NextBackend(lb.backends)
 }
 
 func (lb *LoadBalancer) GetBackends() []*backend.Backend {

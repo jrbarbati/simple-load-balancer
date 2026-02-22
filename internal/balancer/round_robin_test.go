@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func TestLoadBalancer_GetNextBackend(t *testing.T) {
+func TestRoundRobin_NextBackend(t *testing.T) {
 	scenarios := []struct {
 		name            string
 		healthStates    []bool
@@ -33,7 +33,7 @@ func TestLoadBalancer_GetNextBackend(t *testing.T) {
 			backends = append(backends, be)
 		}
 
-		lb := New(backends, 30*time.Second)
+		lb := New(backends, NewRoundRobin(), 30*time.Second)
 
 		for i, expectedIndex := range scenario.expectedIndices {
 			actualBackend, actualErr := lb.GetNextBackend()
@@ -64,7 +64,7 @@ func TestLoadBalancer_GetNextBackend(t *testing.T) {
 	}
 }
 
-func BenchmarkGetNextBackend(b *testing.B) {
+func BenchmarkRoundRobin_NextBackend(b *testing.B) {
 	var backends []*backend.Backend
 
 	for i, healthState := range []bool{true, false, false, true, true, false, true} {
@@ -74,7 +74,7 @@ func BenchmarkGetNextBackend(b *testing.B) {
 		backends = append(backends, be)
 	}
 
-	lb := New(backends, 30*time.Second)
+	lb := New(backends, NewRoundRobin(), 30*time.Second)
 
 	b.ResetTimer()
 
@@ -83,7 +83,7 @@ func BenchmarkGetNextBackend(b *testing.B) {
 	}
 }
 
-func BenchmarkParallelGetNextBackend(b *testing.B) {
+func BenchmarkParallelRoundRobin_NextBackend(b *testing.B) {
 	var backends []*backend.Backend
 
 	for i, healthState := range []bool{true, false, false, true, true, false, true} {
@@ -93,7 +93,7 @@ func BenchmarkParallelGetNextBackend(b *testing.B) {
 		backends = append(backends, be)
 	}
 
-	lb := New(backends, 30*time.Second)
+	lb := New(backends, NewRoundRobin(), 30*time.Second)
 
 	b.ResetTimer()
 
