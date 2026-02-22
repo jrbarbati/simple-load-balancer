@@ -5,6 +5,7 @@ import (
 	"load-balancer/internal/backend"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestLoadBalancer_GetNextBackend(t *testing.T) {
@@ -32,7 +33,7 @@ func TestLoadBalancer_GetNextBackend(t *testing.T) {
 			backends = append(backends, be)
 		}
 
-		lb := New(backends)
+		lb := New(backends, 30*time.Second)
 
 		for i, expectedIndex := range scenario.expectedIndices {
 			actualBackend, actualErr := lb.GetNextBackend()
@@ -73,7 +74,7 @@ func BenchmarkGetNextBackend(b *testing.B) {
 		backends = append(backends, be)
 	}
 
-	lb := New(backends)
+	lb := New(backends, 30*time.Second)
 
 	b.ResetTimer()
 
@@ -92,7 +93,7 @@ func BenchmarkParallelGetNextBackend(b *testing.B) {
 		backends = append(backends, be)
 	}
 
-	lb := New(backends)
+	lb := New(backends, 30*time.Second)
 
 	b.ResetTimer()
 

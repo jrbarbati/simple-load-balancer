@@ -1,6 +1,7 @@
 package backend
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/url"
@@ -55,12 +56,17 @@ func NewFromUrl(url *url.URL, healthUri string, httpClient *http.Client) (*Backe
 	return &Backend{url, healthUri, healthy, httpClient, sync.Mutex{}}, nil
 }
 
-func (be *Backend) StartHealthCheck(cooldown time.Duration) {
+func (be *Backend) StartHealthCheck(ctx context.Context, cooldown time.Duration) {
 	ticker := time.NewTicker(cooldown)
 	defer ticker.Stop()
 
-	for range ticker.C {
-		be.CheckHealth()
+	for {
+		select {
+		case <-ticker.C:
+			be.CheckHealth()
+		case <-ctx.Done():
+			return
+		}
 	}
 }
 

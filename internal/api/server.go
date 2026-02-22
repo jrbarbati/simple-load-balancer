@@ -1,11 +1,16 @@
 package api
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"load-balancer/internal/backend"
 	"load-balancer/internal/balancer"
 	"load-balancer/internal/config"
+	"log"
 	"net/http"
+	"os/signal"
+	"syscall"
 	"time"
 )
 
@@ -36,7 +41,36 @@ func (server *Server) Start() error {
 	http.HandleFunc("/", server.handleProxy)
 	http.HandleFunc("/api/v1/loadBalancers/report", server.handleReport)
 
-	return http.ListenAndServe(fmt.Sprintf(":%d", server.port), nil)
+	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	server.startHealthChecks(ctx)
+	httpServer := server.listenAndServe()
+
+	<-ctx.Done()
+
+	shutDownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	return httpServer.Shutdown(shutDownCtx)
+}
+
+func (server *Server) listenAndServe() *http.Server {
+	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", server.port), Handler: nil}
+
+	go func() {
+		if err := httpServer.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			log.Printf("server error: %v", err)
+		}
+	}()
+
+	return httpServer
+}
+
+func (server *Server) startHealthChecks(ctx context.Context) {
+	for _, lb := range server.loadBalancers {
+		lb.StartHealthChecks(ctx)
+	}
 }
 
 func buildLoadBalancers(pathToConfig string) (map[string]*balancer.LoadBalancer, error) {
@@ -67,8 +101,7 @@ func buildLoadBalancers(pathToConfig string) (map[string]*balancer.LoadBalancer,
 			return nil, err
 		}
 
-		lbs[app.Host] = balancer.New(backends)
-		lbs[app.Host].StartHealthChecks(healthCheckCooldown)
+		lbs[app.Host] = balancer.New(backends, healthCheckCooldown)
 	}
 
 	return lbs, nil

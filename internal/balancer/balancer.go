@@ -1,6 +1,7 @@
 package balancer
 
 import (
+	"context"
 	"errors"
 	"load-balancer/internal/backend"
 	"sync/atomic"
@@ -11,21 +12,22 @@ var NoRegisteredBackends = errors.New("no registered backends")
 var NoHealthyBackends = errors.New("no healthy backends available")
 
 type LoadBalancer struct {
-	backends      []*backend.Backend
-	routeToIndex  *atomic.Uint64
-	backendsCount uint64
+	backends            []*backend.Backend
+	routeToIndex        *atomic.Uint64
+	backendsCount       uint64
+	healthCheckCooldown time.Duration
 }
 
-func New(backends []*backend.Backend) *LoadBalancer {
+func New(backends []*backend.Backend, healthCheckCooldown time.Duration) *LoadBalancer {
 	routeToIndex := &atomic.Uint64{}
 	routeToIndex.Store(0)
 
-	return &LoadBalancer{backends, routeToIndex, uint64(len(backends))}
+	return &LoadBalancer{backends, routeToIndex, uint64(len(backends)), healthCheckCooldown}
 }
 
-func (lb *LoadBalancer) StartHealthChecks(healthCheckCooldown time.Duration) {
+func (lb *LoadBalancer) StartHealthChecks(ctx context.Context) {
 	for _, be := range lb.backends {
-		go be.StartHealthCheck(healthCheckCooldown)
+		go be.StartHealthCheck(ctx, lb.healthCheckCooldown)
 	}
 }
 
