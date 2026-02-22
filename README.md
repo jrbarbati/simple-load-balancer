@@ -213,4 +213,4 @@ This is not production infrastructure. It lacks:
 - Circuit breaking
 - Weighted routing
 
-These are intentional omissions — the goal was depth of understanding over breadth of features. **Project 2** will tackle a production-grade API gateway with real-world deployment concerns addressed from day one.
+These are intentional omissions — the goal was depth of understanding over breadth of features. **API Proxy/Gateway** will tackle a production-grade API gateway with real-world deployment concerns addressed from day one.
